@@ -75,6 +75,7 @@ Open your browser and navigate to http://localhost:8501
 # 📁 Project Structure
 text
 stationery-swap-sell/
+
 ├── app.py # Main application file
 
 ├── train_model.py         # Model training script
