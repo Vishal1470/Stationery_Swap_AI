@@ -8,6 +8,9 @@ import pandas as pd
 from datetime import datetime, timedelta
 from sklearn.cluster import KMeans
 from collections import Counter
+import csv
+import base64
+from io import BytesIO
 
 # Set page configuration
 st.set_page_config(
@@ -398,6 +401,28 @@ def get_color_name(rgb):
     
     return closest_color
 
+# Function to convert image to base64
+def image_to_base64(image):
+    buffered = BytesIO()
+    image.save(buffered, format="PNG")
+    return base64.b64encode(buffered.getvalue()).decode()
+
+# Function to save data to CSV (with UTF-8 encoding)
+def save_to_csv(data):
+    csv_file = "stationery_data.csv"
+    file_exists = os.path.isfile(csv_file)
+    
+    # Use UTF-8 encoding to support special characters
+    with open(csv_file, 'a', newline='', encoding='utf-8') as f:
+        fieldnames = ['timestamp', 'username', 'filename', 'item_type', 'condition', 
+                     'confidence', 'dominant_colors', 'estimated_value', 'image_data']
+        writer = csv.DictWriter(f, fieldnames=fieldnames)
+        
+        if not file_exists:
+            writer.writeheader()
+        
+        writer.writerow(data)
+
 # Sidebar with navigation and user info
 st.sidebar.markdown(f"### 📚 Intelligent Stationery Swap & Sell")
 st.sidebar.markdown(f"### 👋 Welcome, {st.session_state.username}!")
@@ -409,31 +434,31 @@ if st.sidebar.button("🚪 Logout", key="logout_btn"):
 
 st.sidebar.markdown("---")
 st.sidebar.title("📚 Navigation")
-page = st.sidebar.radio("Go to", ["Home", "Classify Item", "Marketplace", "My Items", "Sustainability Impact"], key="nav_radio")
+page = st.sidebar.radio("Go to", ["Home", "Classify Item", "Marketplace", "My Items", "Sustainability Impact", "Data Management"], key="nav_radio")
 
 # Sample data for marketplace (in a real app, this would come from a database)
 marketplace_items = [
-    {"name": "Premium Notebook", "condition": "Excellent", "type": "Notebook", "value": 150 , "owner": "User123", "days_ago": 2},
-    {"name": "Artistic Pens Set", "condition": "Good", "type": "Pens", "value": 50 , "owner": "ArtLover", "days_ago": 1},
-    {"name": "Engineering Scale", "condition": "Excellent", "type": "Scale", "value": 20 , "owner": "Engineer99", "days_ago": 3},
-    {"name": "Color Pencils", "condition": "Fair", "type": "Pencils", "value": 10 , "owner": "CreativeMind", "days_ago": 5},
-    {"name": "Journal", "condition": "Good", "type": "Notebook", "value": 200 , "owner": "WriterGirl", "days_ago": 1},
-    {"name": "Mathematical Instruments", "condition": "Excellent", "type": "Scale", "value": 100 , "owner": "MathWiz", "days_ago": 4}
+    {"name": "Premium Notebook", "condition": "Excellent", "type": "Notebook", "value": 150, "owner": "User123", "days_ago": 2},
+    {"name": "Artistic Pens Set", "condition": "Good", "type": "Pens", "value": 50, "owner": "ArtLover", "days_ago": 1},
+    {"name": "Engineering Scale", "condition": "Excellent", "type": "Scale", "value": 20, "owner": "Engineer99", "days_ago": 3},
+    {"name": "Color Pencils", "condition": "Fair", "type": "Pencils", "value": 10, "owner": "CreativeMind", "days_ago": 5},
+    {"name": "Journal", "condition": "Good", "type": "Notebook", "value": 200, "owner": "WriterGirl", "days_ago": 1},
+    {"name": "Mathematical Instruments", "condition": "Excellent", "type": "Scale", "value": 100, "owner": "MathWiz", "days_ago": 4}
 ]
 
 # Sample user items
 user_items = [
-    {"name": "My Notebook", "condition": "Good", "type": "Notebook", "value": 100 , "listed": True},
-    {"name": "Blue Pen Set", "condition": "Excellent", "type": "Pens", "value": 50 , "listed": False},
-    {"name": "Old Pencil", "condition": "Fair", "type": "Pencils", "value": 5 , "listed": True}
+    {"name": "My Notebook", "condition": "Good", "type": "Notebook", "value": 100, "listed": True},
+    {"name": "Blue Pen Set", "condition": "Excellent", "type": "Pens", "value": 50, "listed": False},
+    {"name": "Old Pencil", "condition": "Fair", "type": "Pencils", "value": 5, "listed": True}
 ]
 
 # Sample sustainability metrics
 sustainability_metrics = {
-    "items_saved": 47,
-    "co2_saved": 12.5,  # kg
-    "waste_reduced": 8.2,  # kg
-    "money_saved": 156  # ₹
+    "items_saved": 80,
+    "co2_saved": 40.5,  # kg
+    "waste_reduced": 38.2,  # kg
+    "money_saved": 15600  # Rs.
 }
 
 # Home page
@@ -453,13 +478,14 @@ if page == "Home":
         - **Fair Valuation**: Get accurate estimates of your items' worth
         - **Easy Trading**: Swap or sell with other eco-conscious users
         - **Track Impact**: See your environmental contribution
+        - **Data Management**: All uploaded images are stored in CSV format for future reference
         """)
         
         st.button("🚀 Get Started", key="get_started_btn")
         
     with col2:
         st.image("https://cdn.pixabay.com/photo/2017/08/11/00/43/office-2629494_1280.png", 
-                use_column_width=True)
+                use_container_width=True)
     
     # Stats section
     st.markdown("---")
@@ -478,7 +504,7 @@ if page == "Home":
     
     with col3:
         st.markdown('<div class>', unsafe_allow_html=True)
-        st.metric("Money Saved", "₹ 5,892", "For our community")
+        st.metric("Money Saved", "5,892 Rs.", "For our community")
         st.markdown('</div>', unsafe_allow_html=True)
     
     with col4:
@@ -494,10 +520,10 @@ if page == "Home":
     for idx, item in enumerate(marketplace_items[:3]):
         with cols[idx]:
             st.markdown(f'<div class="featured-item">', unsafe_allow_html=True)
-            st.image(f"https://picsum.photos/300/200?random={idx}", use_column_width=True)
+            st.image(f"https://picsum.photos/300/200?random={idx}", use_container_width=True)
             st.subheader(item['name'])
             st.caption(f"Condition: {item['condition']} • {item['type']}")
-            st.write(f"**Value:** ₹ {item['value']} ")
+            st.write(f"**Value:** {item['value']} Rs.")
             
             # Condition progress bar
             condition_value = 80 if item['condition'] == 'Excellent' else 60 if item['condition'] == 'Good' else 40
@@ -552,6 +578,8 @@ elif page == "Classify Item":
         - Show any wear or damage clearly
         
         **Supported items:** Notebooks, Pens, Pencils, Scales etc.
+        
+        **Note:** All uploaded images and their data will be stored in a CSV file for future reference.
         """)
     
     # File uploader
@@ -567,7 +595,7 @@ elif page == "Classify Item":
         col1, col2 = st.columns([1, 2])
         
         with col1:
-            st.image(image, caption="Uploaded Image", use_column_width=True)
+            st.image(image, caption="Uploaded Image", use_container_width=True)
         
         with col2:
             # Extract features and predict
@@ -636,9 +664,11 @@ elif page == "Classify Item":
                         "Scale": {"excellent": "40-80", "good": "20-40", "fair": "10-20"}
                     }
                     
+                    estimated_value = ""
                     if item_type in value_ranges and condition in value_ranges[item_type]:
                         value_range = value_ranges[item_type][condition]
-                        st.markdown(f"**Estimated Value:** ₹ {value_range} ")
+                        estimated_value = f"Rs. {value_range}"
+                        st.markdown(f"**Estimated Value:** {estimated_value}")
                     
                     # Color detection section
                     st.markdown("### 🎨 Color Analysis")
@@ -664,6 +694,31 @@ elif page == "Classify Item":
                             st.markdown('</div>', unsafe_allow_html=True)
                         else:
                             st.info("Could not detect dominant colors in this image.")
+                    
+                    # Save data to CSV
+                    try:
+                        # Convert image to base64
+                        image_data = image_to_base64(image)
+                        
+                        # Prepare data for CSV
+                        csv_data = {
+                            'timestamp': datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+                            'username': st.session_state.username,
+                            'filename': uploaded_file.name,
+                            'item_type': item_type if '_' in predicted_class else predicted_class,
+                            'condition': condition if '_' in predicted_class else "Unknown",
+                            'confidence': f"{confidence:.2f}%",
+                            'dominant_colors': ", ".join([f"{get_color_name(color['rgb'])} ({color['percentage']}%)" for color in dominant_colors]) if dominant_colors else "None detected",
+                            'estimated_value': estimated_value,
+                            'image_data': image_data
+                        }
+                        
+                        # Save to CSV
+                        save_to_csv(csv_data)
+                        st.success("✅ Data saved to CSV successfully!")
+                        
+                    except Exception as e:
+                        st.error(f"Error saving data to CSV: {str(e)}")
                     
                     # Suggested action based on condition
                     st.markdown("### 💡 Recommendations")
@@ -750,12 +805,12 @@ elif page == "Marketplace":
     for idx, item in enumerate(filtered_items):
         with cols[idx % 3]:
             st.markdown(f'<div class>', unsafe_allow_html=True)
-            st.image(f"https://picsum.photos/300/200?random={idx+10}", use_column_width=True)
+            st.image(f"https://picsum.photos/300/200?random={idx+10}", use_container_width=True)
             st.subheader(item['name'])
             st.caption(f"By {item['owner']} • {item['days_ago']} days ago")
             st.write(f"**Type:** {item['type']}")
             st.write(f"**Condition:** {item['condition']}")
-            st.write(f"**Value:** ₹{item['value']}")
+            st.write(f"**Value:** {item['value']} Rs.")
             
             # Condition indicator
             condition_progress = {
@@ -788,7 +843,7 @@ elif page == "My Items":
     with col2:
         st.metric("Listed Items", listed_items)
     with col3:
-        st.metric("Total Value", f"₹{total_value}")
+        st.metric("Total Value", f"{total_value} Rs.")
     
     # User's items
     st.subheader("Your Inventory")
@@ -797,10 +852,10 @@ elif page == "My Items":
         with st.expander(f"{item['name']} - {item['type']} ({item['condition']})", expanded=True):
             col1, col2 = st.columns([1, 3])
             with col1:
-                st.image(f"https://picsum.photos/200/150?random={idx+20}", use_column_width=True)
+                st.image(f"https://picsum.photos/200/150?random={idx+20}", use_container_width=True)
             with col2:
                 st.write(f"**Condition:** {item['condition']}")
-                st.write(f"**Estimated Value:** ₹ {item['value']}")
+                st.write(f"**Estimated Value:** {item['value']} Rs.")
                 st.write(f"**Listed:** {'Yes' if item['listed'] else 'No'}")
                 
                 if item['listed']:
@@ -821,7 +876,7 @@ elif page == "My Items":
             item_type = st.selectbox("Item Type", ["Notebook", "Pen", "Pencil", "Scale", "Other"], key="item_type")
         with col2:
             item_condition = st.selectbox("Condition", ["Excellent", "Good", "Fair"], key="item_condition")
-            item_value = st.slider("Estimated Value (₹)", 10, 50, 100, key="item_value")
+            item_value = st.slider("Estimated Value (Rs.)", 10, 50, 100, key="item_value")
         
         submitted = st.form_submit_button("Add Item")
         if submitted:
@@ -842,7 +897,7 @@ elif page == "Sustainability Impact":
     with col3:
         st.metric("Waste Reduced", f"{sustainability_metrics['waste_reduced']} kg")
     with col4:
-        st.metric("Money Saved", f"₹{sustainability_metrics['money_saved']}")
+        st.metric("Money Saved", f"{sustainability_metrics['money_saved']} Rs.")
     
     # Impact visualization - Using Streamlit's native line chart instead of Plotly
     st.subheader("Impact Over Time")
@@ -867,7 +922,7 @@ elif page == "Sustainability Impact":
         "📊 Producing a single notebook generates approximately 1.2 kg of CO₂ emissions",
         "💧 Manufacturing one pen uses about 13 gallons of water",
         "🌳 Recycling stationery items can reduce carbon footprint by up to 70%",
-        "💰 The average student spends ₹500-1000 on stationery each year",
+        "💰 The average student spends 500-1000 Rs. on stationery each year",
         "🔄 Swapping instead of buying new extends the life of products by 2-3 years"
     ]
     
@@ -886,7 +941,59 @@ elif page == "Sustainability Impact":
     ]
     
     for i, leader in enumerate(leaders):
-        st.markdown(f"{i+1}. **{leader['name']}** - {leader['items']} items saved, ₹{leader['impact']} impact")
+        st.markdown(f"{i+1}. **{leader['name']}** - {leader['items']} items saved, {leader['impact']} Rs. impact")
+
+# Data Management page
+elif page == "Data Management":
+    st.markdown('<h1 class="main-header">📊 Data Management</h1>', unsafe_allow_html=True)
+    
+    st.subheader("Uploaded Stationery Data")
+    
+    # Check if CSV file exists
+    csv_file = "stationery_data.csv"
+    if os.path.exists(csv_file):
+        # Load and display data with UTF-8 encoding
+        try:
+            df = pd.read_csv(csv_file, encoding='utf-8')
+        except UnicodeDecodeError:
+            # If UTF-8 fails, try other encodings
+            try:
+                df = pd.read_csv(csv_file, encoding='latin-1')
+            except:
+                st.error("Could not read the CSV file with available encodings.")
+                df = pd.DataFrame()
+        
+        if not df.empty:
+            st.dataframe(df)
+            
+            # Show statistics
+            st.subheader("Data Statistics")
+            col1, col2, col3 = st.columns(3)
+            with col1:
+                st.metric("Total Records", len(df))
+            with col2:
+                st.metric("Unique Users", df['username'].nunique())
+            with col3:
+                st.metric("Most Common Item", df['item_type'].mode()[0] if not df.empty else "N/A")
+            
+            # Download button
+            st.download_button(
+                label="Download CSV",
+                data=df.to_csv(index=False),
+                file_name="stationery_data.csv",
+                mime="text/csv"
+            )
+            
+            # Clear data button
+            if st.button("Clear All Data", key="clear_data"):
+                if os.path.exists(csv_file):
+                    os.remove(csv_file)
+                    st.success("All data has been cleared!")
+                    st.rerun()
+        else:
+            st.info("No data available in the CSV file.")
+    else:
+        st.info("No data available yet. Upload some images on the Classify Item page to get started.")
 
 # Footer
 st.markdown("---")
